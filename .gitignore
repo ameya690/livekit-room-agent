@@ -46,3 +46,8 @@ ai_audio_test.*
 # Temporary files
 *.tmp
 *.temp
+
+# Personal documentation/guides (keep only README.md in repo)
+SETUP_GUIDE.md
+STEP*.md
+QUICK_START*.md
