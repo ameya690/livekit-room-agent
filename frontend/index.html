@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveKit + OpenAI Audio Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status.disconnected {
+      background: #fee;
+      color: #c33;
+      border: 1px solid #fcc;
+    }
+
+    .status.connecting {
+      background: #fef3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-bottom: 10px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: #6c757d;
+    }
+
+    button.danger {
+      background: #dc3545;
+    }
+
+    .audio-indicator {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .audio-indicator.active {
+      display: block;
+    }
+
+    .audio-level {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .audio-level-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+    .log-container {
+      margin-top: 20px;
+      padding: 16px;
+      background: #1e1e1e;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .log-entry {
+      color: #d4d4d4;
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+
+    .log-entry.info { color: #4fc3f7; }
+    .log-entry.success { color: #81c784; }
+    .log-entry.warning { color: #ffb74d; }
+    .log-entry.error { color: #e57373; }
+
+    .test-results {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .test-results.active {
+      display: block;
+    }
+
+    .test-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .test-item.pass {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+
+    .test-item.fail {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+    }
+
+    .test-item.pending {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 4px solid #ffc107;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎙️ LiveKit + OpenAI Test</h1>
+    <p class="subtitle">Step 1: User joins LiveKit room</p>
+
+    <div id="status" class="status disconnected">
+      ⚫ Disconnected
+    </div>
+
+    <div class="input-group">
+      <label for="identity">Your Identity</label>
+      <input type="text" id="identity" placeholder="Enter your name" value="user-1">
+    </div>
+
+    <div class="input-group">
+      <label for="roomName">Room Name</label>
+      <input type="text" id="roomName" placeholder="Enter room name" value="demo-room">
+    </div>
+
+    <button id="connectBtn">Connect to Room</button>
+    <button id="micBtn" class="secondary" disabled>Enable Microphone</button>
+    <button id="disconnectBtn" class="danger" disabled>Disconnect</button>
+
+    <div id="audioIndicator" class="audio-indicator">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong>🎤 Microphone Active</strong>
+        <span id="speakerStatus">Listening...</span>
+      </div>
+      <div class="audio-level">
+        <div id="audioLevelBar" class="audio-level-bar"></div>
+      </div>
+    </div>
+
+    <div id="testResults" class="test-results">
+      <strong>Test Results:</strong>
+      <div id="test1" class="test-item pending">Test 1.1: Room Connection - Pending</div>
+      <div id="test2" class="test-item pending">Test 1.2: Mic Publish - Pending</div>
+      <div id="test3" class="test-item pending">Test 1.3: Audio Activity - Pending</div>
+    </div>
+
+    <div class="log-container" id="logContainer"></div>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

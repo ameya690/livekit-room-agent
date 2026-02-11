@@ -1,0 +1,17 @@
+{
+  "name": "livekit-openai-frontend",
+  "version": "1.0.0",
+  "description": "Browser client for LiveKit + OpenAI integration",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "livekit-client": "^2.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
