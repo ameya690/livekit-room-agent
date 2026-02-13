@@ -1,0 +1,17 @@
+# LiveKit Python SDK for real-time communication
+livekit==0.17.5
+
+# OpenAI Python SDK
+openai==1.54.0
+
+# WebSocket client for OpenAI Realtime API
+websockets==13.1
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# Audio processing
+numpy==1.26.4
+
+# Async support
+aiohttp==3.10.10

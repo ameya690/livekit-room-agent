@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "agent": "node ai_agent.js",
+    "agent": "python ai_agent.py",
+    "agent:js": "node ai_agent.js",
     "agent:watch": "node --watch ai_agent.js"
   },
   "dependencies": {
