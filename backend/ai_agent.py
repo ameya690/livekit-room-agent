@@ -15,7 +15,8 @@ import base64
 import json
 import numpy as np
 from dotenv import load_dotenv
-from livekit import rtc, api
+from livekit import rtc
+from livekit.api import AccessToken, VideoGrants
 import websockets
 
 # Load environment variables
@@ -40,9 +41,9 @@ if not OPENAI_API_KEY or OPENAI_API_KEY == 'your_openai_api_key_here':
 
 def generate_ai_token(room_name: str) -> str:
     """Generate LiveKit access token for AI agent"""
-    token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
     token.with_identity(AI_IDENTITY).with_name(AI_IDENTITY).with_grants(
-        api.VideoGrants(
+        VideoGrants(
             room_join=True,
             room=room_name,
             can_publish=True,
@@ -345,7 +346,8 @@ class AIAgent:
                 'last_log': 0
             }
         
-        async for frame in audio_stream:
+        async for event in audio_stream:
+            frame = event.frame
             self.audio_frame_count += 1
             stats = self.subscribed_tracks[participant.identity]
             stats['frames'] += 1
