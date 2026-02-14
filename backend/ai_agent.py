@@ -197,18 +197,21 @@ class OpenAIRealtimeSession:
             # Receive AI audio from OpenAI
             self.audio_chunks_received += 1
             
-            if self.audio_chunks_received <= 3:
-                delta = message_data.get('delta', '')
-                size_kb = len(delta) * 0.75 / 1024
-                print(f'[OPENAI] ✅ TEST 4.1: Received audio delta #{self.audio_chunks_received} ({size_kb:.2f} KB)')
-            
             # Decode base64 to PCM16 buffer
             delta = message_data.get('delta', '')
             pcm16_buffer = base64.b64decode(delta)
             
+            if self.audio_chunks_received <= 3:
+                size_kb = len(delta) * 0.75 / 1024
+                print(f'[OPENAI] ✅ TEST 4.1: Received audio delta #{self.audio_chunks_received} ({size_kb:.2f} KB, {len(pcm16_buffer)} bytes PCM16)')
+            
             # Forward to AI agent for playback
             if self.ai_agent and self.ai_agent.audio_source:
                 await self.ai_agent.play_audio_in_room(pcm16_buffer)
+                if self.audio_chunks_received <= 3:
+                    print(f'[OPENAI] 📤 Queued audio chunk #{self.audio_chunks_received} for playback')
+            else:
+                print(f'[OPENAI] ⚠️ Cannot queue audio - ai_agent={self.ai_agent is not None}, audio_source={self.ai_agent.audio_source if self.ai_agent else None}')
                 
         elif msg_type == 'response.audio.done':
             print('[OPENAI] 🔊 Audio response completed')
@@ -416,6 +419,10 @@ class AIAgent:
         
         # Add to queue
         await self.audio_queue.put(pcm16_buffer)
+        queue_size = self.audio_queue.qsize()
+        
+        if self.audio_frames_published < 3 or queue_size <= 5:
+            print(f'[AI-AGENT] 📥 Added audio chunk to queue (queue size: {queue_size}, published: {self.audio_frames_published})')
     
     async def process_audio_queue(self):
         """Process audio queue sequentially"""
@@ -423,8 +430,11 @@ class AIAgent:
         
         while True:
             try:
-                # Get audio from queue
+                # Get audio from queue (blocks until available)
                 pcm16_buffer = await self.audio_queue.get()
+                
+                if self.audio_frames_published < 3:
+                    print(f'[AI-AGENT] 🎬 Processing audio chunk from queue ({len(pcm16_buffer)} bytes)')
                 
                 # Convert to numpy array
                 audio_data = np.frombuffer(pcm16_buffer, dtype=np.int16)
@@ -444,12 +454,16 @@ class AIAgent:
                 # Log first few frames
                 if self.audio_frames_published <= 3:
                     print(f'[AI-AGENT] ✅ TEST 5.2: Published AI audio frame #{self.audio_frames_published} to LiveKit ({len(audio_data)} samples)')
+                elif self.audio_frames_published % 50 == 0:
+                    print(f'[AI-AGENT] 📊 Published {self.audio_frames_published} audio frames so far...')
                 
                 # Small delay to prevent overwhelming
                 await asyncio.sleep(0.01)
                 
             except Exception as e:
                 print(f'[AI-AGENT] ❌ Error processing audio queue: {e}')
+                import traceback
+                traceback.print_exc()
     
     async def report_status(self):
         """Periodically report agent status"""
