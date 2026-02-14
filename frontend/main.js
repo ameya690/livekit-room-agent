@@ -190,6 +190,35 @@ function setupRoomEventListeners() {
   room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
     log('Audio playback status changed', 'info');
   });
+
+  // Handle remote audio tracks (including AI agent)
+  room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    log(`Track subscribed from ${participant.identity}: ${track.kind}`, 'success');
+    
+    if (track.kind === 'audio') {
+      // Create audio element to play the track
+      const audioElement = track.attach();
+      audioElement.autoplay = true;
+      document.body.appendChild(audioElement);
+      
+      log(`🔊 Playing audio from ${participant.identity}`, 'success');
+      
+      // If it's the AI agent, log it specially
+      if (participant.identity === 'ai-agent') {
+        log('🤖 AI voice playback started!', 'success');
+      }
+    }
+  });
+
+  room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+    log(`Track unsubscribed from ${participant.identity}: ${track.kind}`, 'info');
+    
+    if (track.kind === 'audio') {
+      // Detach and remove audio element
+      track.detach().forEach(element => element.remove());
+      log(`Stopped playing audio from ${participant.identity}`, 'info');
+    }
+  });
 }
 
 async function enableMicrophone() {
